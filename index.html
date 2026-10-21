@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FitMetrics - Progreso Corporal</title>
+  
+  <!-- Configuración PWA -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="theme-color" content="#1e293b">
+
+  <!-- Tailwind CSS & Chart.js -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-12">
+
+  <!-- Header & Logo -->
+  <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700 sticky top-0 z-50">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <!-- Logo SVG -->
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-500 to-emerald-400 p-0.5 shadow-lg shadow-indigo-500/30">
+          <div class="w-full h-full bg-slate-900 rounded-[10px] flex items-center justify-center">
+            <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <h1 id="header-title" class="text-lg font-bold bg-gradient-to-r from-white via-slate-200 to-emerald-400 bg-clip-text text-transparent">FitMetrics</h1>
+          <p id="header-subtitle" class="text-xs text-slate-400">Control de Progreso</p>
+        </div>
+      </div>
+      
+      <!-- Botones de Gestión -->
+      <div class="flex items-center gap-2">
+        <button onclick="openProfileModal()" class="bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/30 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1">
+          ⚙️ Mi Perfil
+        </button>
+        <button onclick="exportDataJSON()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1">
+          💾 Exportar
+        </button>
+        <label class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1">
+          📂 Importar
+          <input type="file" id="import-file" accept=".json" class="hidden" onchange="importDataJSON(event)">
+        </label>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 mt-6 space-y-8">
+
+    <!-- Tarjeta de Bienvenida Motivacional -->
+    <section class="bg-gradient-to-r from-slate-800 via-slate-800/90 to-indigo-950/50 rounded-2xl p-6 border border-indigo-500/20 shadow-xl relative overflow-hidden">
+      <div class="absolute -right-8 -bottom-8 w-40 h-40 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+        <div>
+          <h2 id="welcome-message" class="text-2xl font-extrabold text-white">
+            ¡Hola, Atleta! 👋
+          </h2>
+          <p class="text-emerald-400 font-semibold text-lg mt-1 tracking-wide">
+            "Tu Meta esta mas cerca"
+          </p>
+        </div>
+        <div id="quick-stats" class="flex gap-3 text-xs">
+          <!-- Métricas rápidas dinámicas -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Modal / Sección de Perfil -->
+    <section id="profile-section" class="bg-slate-800/90 border border-indigo-500/30 rounded-2xl p-5 shadow-xl hidden">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-md font-semibold text-indigo-400 flex items-center gap-2">
+          <span>👤</span> Configuración del Perfil Personal
+        </h2>
+        <button onclick="closeProfileModal()" class="text-slate-400 hover:text-white text-sm">✕ Cerrar</button>
+      </div>
+      <form id="profile-form" onsubmit="saveProfile(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Nombre</label>
+          <input type="text" id="p-nombre" required placeholder="Tu nombre" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:border-indigo-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Altura (cm)</label>
+          <input type="number" step="1" id="p-altura" required placeholder="175" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:border-indigo-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Fecha de Nacimiento</label>
+          <input type="date" id="p-nacimiento" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:border-indigo-500 focus:outline-none">
+        </div>
+        <div class="md:col-span-3 flex justify-end">
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2 rounded-lg transition shadow-lg shadow-indigo-600/20">
+            Guardar Perfil
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Formulario de Registro con Fotos -->
+    <section id="form-section" class="bg-slate-800 rounded-2xl p-5 border border-slate-700/60 shadow-xl">
+      <h2 class="text-md font-semibold text-emerald-400 mb-4 flex items-center gap-2">
+        <span>📅</span> Nuevo Registro (Métricas y Fotos)
+      </h2>
+      <form id="metrics-form" onsubmit="saveRecord(event)" class="space-y-4 text-sm">
+        
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div class="col-span-2 md:col-span-1">
+            <label class="block text-xs text-slate-400 mb-1">Fecha</label>
+            <input type="date" id="fecha" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:border-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Peso (kg)</label>
+            <input type="number" step="0.1" id="peso" required placeholder="75.0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:border-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">% Grasa Corporal</label>
+            <input type="number" step="0.1" id="grasa" placeholder="15.0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:border-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Pecho (cm)</label>
+            <input type="number" step="0.5" id="pecho" placeholder="100" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:border-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Cintura (cm)</label>
+            <input type="number" step="0.5" id="cintura" placeholder="80" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:border-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Abdomen (cm)</label>
+            <input type="number" step="0.5" id="abdomen" placeholder="85" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:border-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Cadera (cm)</label>
+            <input type="number" step="0.5" id="cadera" placeholder="95" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:border-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Brazo Dominante (cm)</label>
+            <input type="number" step="0.5" id="brazo" placeholder="35" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:border-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Pierna Dominante (cm)</label>
+            <input type="number" step="0.5" id="pierna" placeholder="55" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:border-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Gemelo Dominante (cm)</label>
+            <input type="number" step="0.5" id="gemelo" placeholder="38" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:border-emerald-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="border-t border-slate-700 pt-4 mt-4">
+          <label class="block text-xs font-semibold text-emerald-400 mb-2">📸 Fotos de Progreso (Opcional)</label>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <span class="block text-xs text-slate-400 mb-1">Foto de Frente</span>
+              <input type="file" id="foto-frente" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-700 file:text-emerald-300 hover:file:bg-slate-600 cursor-pointer">
+            </div>
+            <div>
+              <span class="block text-xs text-slate-400 mb-1">Foto de Perfil</span>
+              <input type="file" id="foto-perfil" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-700 file:text-emerald-300 hover:file:bg-slate-600 cursor-pointer">
+            </div>
+            <div>
+              <span class="block text-xs text-slate-400 mb-1">Foto de Espaldas</span>
+              <input type="file" id="foto-espaldas" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-700 file:text-emerald-300 hover:file:bg-slate-600 cursor-pointer">
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-2.5 rounded-lg transition shadow-lg shadow-emerald-500/20">
+            Guardar Registro y Fotos
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Gráficas Individuales -->
+    <section class="space-y-6">
+      <h2 class="text-md font-semibold text-emerald-400">📈 Gráficas de Evolución Individual</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700/60 shadow-xl">
+          <h3 class="text-sm font-semibold text-emerald-400 mb-2">⚖️ Peso (kg)</h3>
+          <div class="h-48"><canvas id="chart-peso"></canvas></div>
+        </div>
+        <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700/60 shadow-xl">
+          <h3 class="text-sm font-semibold text-purple-400 mb-2">📊 % Grasa Corporal</h3>
+          <div class="h-48"><canvas id="chart-grasa"></canvas></div>
+        </div>
+        <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700/60 shadow-xl">
+          <h3 class="text-sm font-semibold text-sky-400 mb-2">👕 Pecho (cm)</h3>
+          <div class="h-48"><canvas id="chart-pecho"></canvas></div>
+        </div>
+        <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700/60 shadow-xl">
+          <h3 class="text-sm font-semibold text-amber-400 mb-2">📏 Cintura (cm)</h3>
+          <div class="h-48"><canvas id="chart-cintura"></canvas></div>
+        </div>
+        <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700/60 shadow-xl">
+          <h3 class="text-sm font-semibold text-rose-400 mb-2">🎯 Abdomen (cm)</h3>
+          <div class="h-48"><canvas id="chart-abdomen"></canvas></div>
+        </div>
+        <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700/60 shadow-xl">
+          <h3 class="text-sm font-semibold text-fuchsia-400 mb-2">🍑 Cadera (cm)</h3>
+          <div class="h-48"><canvas id="chart-cadera"></canvas></div>
+        </div>
+        <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700/60 shadow-xl">
+          <h3 class="text-sm font-semibold text-teal-400 mb-2">💪 Brazo Dominante (cm)</h3>
+          <div class="h-48"><canvas id="chart-brazo"></canvas></div>
+        </div>
+        <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700/60 shadow-xl">
+          <h3 class="text-sm font-semibold text-indigo-400 mb-2">🦵 Pierna Dominante (cm)</h3>
+          <div class="h-48"><canvas id="chart-pierna"></canvas></div>
+        </div>
+        <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700/60 shadow-xl md:col-span-2 lg:col-span-1">
+          <h3 class="text-sm font-semibold text-cyan-400 mb-2">🦶 Gemelo Dominante (cm)</h3>
+          <div class="h-48"><canvas id="chart-gemelo"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Historial en Tabla -->
+    <section class="bg-slate-800 rounded-2xl p-5 border border-slate-700/60 shadow-xl">
+      <h2 class="text-md font-semibold text-emerald-400 mb-4">📋 Historial de Registros, IMC & Fotos</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900/60 text-slate-400 uppercase border-b border-slate-700">
+            <tr>
+              <th class="p-3">Fecha</th>
+              <th class="p-3">Peso</th>
+              <th class="p-3">IMC</th>
+              <th class="p-3">Grasa</th>
+              <th class="p-3">Pecho</th>
+              <th class="p-3">Cintura</th>
+              <th class="p-3">Abdomen</th>
+              <th class="p-3">Cadera</th>
+              <th class="p-3">Brazo</th>
+              <th class="p-3">Pierna</th>
+              <th class="p-3">Gemelo</th>
+              <th class="p-3 text-center">Fotos</th>
+              <th class="p-3 text-right">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body" class="divide-y divide-slate-700/50">
+            <!-- Se llena dinámicamente -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal para fotos ampliadas -->
+  <div id="photo-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="closePhotoModal()">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+      <div class="flex justify-between items-center mb-3">
+        <h3 id="modal-title" class="text-sm font-bold text-emerald-400">Comparativa de Fotos</h3>
+        <button onclick="closePhotoModal()" class="text-slate-400 hover:text-white text-sm">✕ Cerrar</button>
+      </div>
+      <div id="modal-content" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+        <!-- Contenido dinámico -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('fecha').value = new Date().toISOString().split('T')[0];
+    let chartInstances = {};
+
+    function getProfile() {
+      const profile = localStorage.getItem('fit_metrics_profile');
+      return profile ? JSON.parse(profile) : { nombre: 'Atleta', altura: 175, nacimiento: '' };
+    }
+
+    function saveProfile(event) {
+      event.preventDefault();
+      const profile = {
+        nombre: document.getElementById('p-nombre').value,
+        altura: parseFloat(document.getElementById('p-altura').value) || 175,
+        nacimiento: document.getElementById('p-nacimiento').value
+      };
+      localStorage.setItem('fit_metrics_profile', JSON.stringify(profile));
+      closeProfileModal();
+      refreshApp();
+      alert('¡Perfil guardado correctamente!');
+    }
+
+    function loadWelcomeHeader() {
+      const profile = getProfile();
+      const records = getStoredData();
+
+      document.getElementById('welcome-message').textContent = `¡Hola, ${profile.nombre}! 👋`;
+      document.getElementById('header-subtitle').textContent = `Progreso de ${profile.nombre} (${profile.altura} cm)`;
+
+      document.getElementById('p-nombre').value = profile.nombre;
+      document.getElementById('p-altura').value = profile.altura;
+      document.getElementById('p-nacimiento').value = profile.nacimiento || '';
+
+      const quickStats = document.getElementById('quick-stats');
+      if (records.length > 0) {
+        const lastRecord = records[records.length - 1];
+        const alturaMetros = profile.altura / 100;
+        const imc = (alturaMetros > 0 && lastRecord.peso > 0) ? (lastRecord.peso / (alturaMetros * alturaMetros)).toFixed(1) : '-';
+
+        quickStats.innerHTML = `
+          <div class="bg-slate-900/60 border border-slate-700/50 rounded-xl px-3 py-2 text-center">
+            <span class="block text-slate-400 text-[10px] uppercase font-semibold">Último Peso</span>
+            <span class="font-bold text-emerald-400 text-sm">${lastRecord.peso} kg</span>
+          </div>
+          <div class="bg-slate-900/60 border border-slate-700/50 rounded-xl px-3 py-2 text-center">
+            <span class="block text-slate-400 text-[10px] uppercase font-semibold">IMC Actual</span>
+            <span class="font-bold text-indigo-300 text-sm">${imc}</span>
+          </div>
+        `;
+      } else {
+        quickStats.innerHTML = `
+          <div class="bg-slate-900/60 border border-slate-700/50 rounded-xl px-3 py-2 text-center text-slate-400">
+            Añade tu primer registro abajo 👇
+          </div>
+        `;
+      }
+    }
+
+    function openProfileModal() {
+      document.getElementById('profile-section').classList.remove('hidden');
+      document.getElementById('profile-section').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function closeProfileModal() {
+      document.getElementById('profile-section').classList.add('hidden');
+    }
+
+    function convertImageToBase64(file, callback) {
+      if (!file) {
+        callback(null);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 600;
+          const scaleSize = MAX_WIDTH / img.width;
+          canvas.width = MAX_WIDTH;
+          canvas.height = img.height * scaleSize;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          
+          const dataURL = canvas.toDataURL('image/jpeg', 0.7);
+          callback(dataURL);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function getStoredData() {
+      const data = localStorage.getItem('fit_metrics_data');
+      return data ? JSON.parse(data) : [];
+    }
+
+    function saveRecord(event) {
+      event.preventDefault();
+
+      const frenteFile = document.getElementById('foto-frente').files[0];
+      const perfilFile = document.getElementById('foto-perfil').files[0];
+      const espaldasFile = document.getElementById('foto-espaldas').files[0];
+
+      convertImageToBase64(frenteFile, function(frenteBase64) {
+        convertImageToBase64(perfilFile, function(perfilBase64) {
+          convertImageToBase64(espaldasFile, function(espaldasBase64) {
+            
+            const records = getStoredData();
+
+            const newRecord = {
+              id: Date.now().toString(),
+              fecha: document.getElementById('fecha').value,
+              peso: parseFloat(document.getElementById('peso').value) || 0,
+              grasa: parseFloat(document.getElementById('grasa').value) || 0,
+              pecho: parseFloat(document.getElementById('pecho').value) || 0,
+              cintura: parseFloat(document.getElementById('cintura').value) || 0,
+              abdomen: parseFloat(document.getElementById('abdomen').value) || 0,
+              cadera: parseFloat(document.getElementById('cadera').value) || 0,
+              brazo: parseFloat(document.getElementById('brazo').value) || 0,
+              pierna: parseFloat(document.getElementById('pierna').value) || 0,
+              gemelo: parseFloat(document.getElementById('gemelo').value) || 0,
+              fotos: {
+                frente: frenteBase64,
+                perfil: perfilBase64,
+                espaldas: espaldasBase64
+              }
+            };
+
+            records.push(newRecord);
+            records.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+            localStorage.setItem('fit_metrics_data', JSON.stringify(records));
+            document.getElementById('metrics-form').reset();
+            document.getElementById('fecha').value = new Date().toISOString().split('T')[0];
+            
+            refreshApp();
+            alert('¡Registro y fotos guardados con éxito!');
+          });
+        });
+      });
+    }
+
+    function deleteRecord(id) {
+      if (!confirm('¿Seguro que deseas eliminar este registro?')) return;
+      let records = getStoredData();
+      records = records.filter(r => r.id !== id);
+      localStorage.setItem('fit_metrics_data', JSON.stringify(records));
+      refreshApp();
+    }
+
+    function viewPhotos(id) {
+      const records = getStoredData();
+      const record = records.find(r => r.id === id);
+      if (!record || !record.fotos) return;
+
+      const modalContent = document.getElementById('modal-content');
+      document.getElementById('modal-title').textContent = `Fotos de Progreso - ${record.fecha}`;
+      modalContent.innerHTML = '';
+
+      const tipos = [
+        { key: 'frente', label: 'Frente' },
+        { key: 'perfil', label: 'Perfil' },
+        { key: 'espaldas', label: 'Espaldas' }
+      ];
+
+      tipos.forEach(t => {
+        const fotoSrc = record.fotos[t.key];
+        const div = document.createElement('div');
+        div.className = "bg-slate-900 p-2 rounded-xl border border-slate-700";
+        if (fotoSrc) {
+          div.innerHTML = `
+            <span class="block text-xs font-semibold text-slate-400 mb-2">${t.label}</span>
+            <img src="${fotoSrc}" class="rounded-lg w-full h-auto object-cover max-h-80 mx-auto cursor-pointer" onclick="window.open('${fotoSrc}')">
+          `;
+        } else {
+          div.innerHTML = `
+            <span class="block text-xs font-semibold text-slate-400 mb-2">${t.label}</span>
+            <div class="h-40 flex items-center justify-center text-slate-600 text-xs">Sin foto</div>
+          `;
+        }
+        modalContent.appendChild(div);
+      });
+
+      document.getElementById('photo-modal').classList.remove('hidden');
+    }
+
+    function closePhotoModal() {
+      document.getElementById('photo-modal').classList.add('hidden');
+    }
+
+    function exportDataJSON() {
+      const records = getStoredData();
+      const profile = getProfile();
+      const exportPayload = { profile, records };
+      
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportPayload, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `fitmetrics_backup_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importDataJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (Array.isArray(imported)) {
+            localStorage.setItem('fit_metrics_data', JSON.stringify(imported));
+          } else if (imported.records && imported.profile) {
+            localStorage.setItem('fit_metrics_data', JSON.stringify(imported.records));
+            localStorage.setItem('fit_metrics_profile', JSON.stringify(imported.profile));
+          }
+          refreshApp();
+          alert('¡Datos y perfil importados correctamente!');
+        } catch (error) {
+          alert('Error al leer el archivo JSON.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function updateTable() {
+      const records = getStoredData();
+      const profile = getProfile();
+      const tbody = document.getElementById('history-table-body');
+      tbody.innerHTML = '';
+
+      if (records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="13" class="text-center p-4 text-slate-500">No hay registros guardados todavía.</td></tr>`;
+        return;
+      }
+
+      const reversedRecords = [...records].reverse();
+      const alturaMetros = profile.altura / 100;
+
+      reversedRecords.forEach(r => {
+        const imc = (alturaMetros > 0 && r.peso > 0) ? (r.peso / (alturaMetros * alturaMetros)).toFixed(1) : '-';
+        const hasPhotos = r.fotos && (r.fotos.frente || r.fotos.perfil || r.fotos.espaldas);
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-700/30 transition";
+        tr.innerHTML = `
+          <td class="p-3 font-medium text-white">${r.fecha}</td>
+          <td class="p-3">${r.peso} kg</td>
+          <td class="p-3 font-semibold text-indigo-300">${imc}</td>
+          <td class="p-3">${r.grasa}%</td>
+          <td class="p-3">${r.pecho} cm</td>
+          <td class="p-3">${r.cintura} cm</td>
+          <td class="p-3">${r.abdomen} cm</td>
+          <td class="p-3">${r.cadera} cm</td>
+          <td class="p-3">${r.brazo} cm</td>
+          <td class="p-3">${r.pierna || 0} cm</td>
+          <td class="p-3">${r.gemelo} cm</td>
+          <td class="p-3 text-center">
+            ${hasPhotos ? `<button onclick="viewPhotos('${r.id}')" class="text-emerald-400 hover:text-emerald-300 font-semibold px-2 py-1 rounded bg-emerald-500/10 transition">Ver Fotos</button>` : `<span class="text-slate-600">-</span>`}
+          </td>
+          <td class="p-3 text-right">
+            <button onclick="deleteRecord('${r.id}')" class="text-rose-400 hover:text-rose-300 font-semibold px-2 py-1 rounded bg-rose-500/10 transition">Eliminar</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function createSingleChart(canvasId, label, data, color) {
+      if (chartInstances[canvasId]) {
+        chartInstances[canvasId].destroy();
+      }
+
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      chartInstances[canvasId] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: chartLabels,
+          datasets: [{
+            label: label,
+            data: data,
+            borderColor: color,
+            backgroundColor: color + '1A',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+            y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    let chartLabels = [];
+
+    function initCharts() {
+      const records = getStoredData();
+      chartLabels = records.map(r => r.fecha);
+
+      createSingleChart('chart-peso', 'Peso (kg)', records.map(r => r.peso), '#34d399');
+      createSingleChart('chart-grasa', 'Grasa (%)', records.map(r => r.grasa), '#a78bfa');
+      createSingleChart('chart-pecho', 'Pecho (cm)', records.map(r => r.pecho), '#38bdf8');
+      createSingleChart('chart-cintura', 'Cintura (cm)', records.map(r => r.cintura), '#fbbf24');
+      createSingleChart('chart-abdomen', 'Abdomen (cm)', records.map(r => r.abdomen), '#f87171');
+      createSingleChart('chart-cadera', 'Cadera (cm)', records.map(r => r.cadera), '#e879f9');
+      createSingleChart('chart-brazo', 'Brazo (cm)', records.map(r => r.brazo), '#2dd4bf');
+      createSingleChart('chart-pierna', 'Pierna (cm)', records.map(r => r.pierna || 0), '#818cf8');
+      createSingleChart('chart-gemelo', 'Gemelo (cm)', records.map(r => r.gemelo), '#22d3ee');
+    }
+
+    function refreshApp() {
+      loadWelcomeHeader();
+      updateTable();
+      initCharts();
+    }
+
+    window.onload = refreshApp;
+  </script>
+</body>
+</html>
